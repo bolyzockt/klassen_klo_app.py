@@ -67,7 +67,7 @@ st.markdown("<h1 style='text-align: center; margin-top: -50px;'>👑 PRECHTL CON
 # --- DASHBOARD ---
 c1, c2, c3 = st.columns(3)
 with c1: st.markdown(f"<div style='text-align:center'><h3>🏫 IM RAUM</h3><h2>{len(FARBEN) - (1 if wer_ist_weg else 0)}</h2></div>", unsafe_allow_html=True)
-with c2: st.markdown(f"<div style='text-align:center'><h3>🚽 STATUS</h3><h2>{'BESETZT' if wer_ist_weg else 'FREI'}</h2></div>", unsafe_allow_html=True)
+with c2: st.markdown(f"<div style='text-align:center'><h3>🚽 STATUS</h3><h2>{'Jemand ist am Kacken' if wer_ist_weg else 'Keiner kackt'}</h2></div>", unsafe_allow_html=True)
 with c3: st.markdown(f"<div style='text-align:center'><h3>⏳ LIVE-ZEIT</h3><h2>{dauer_minuten}m {rest_sekunden}s</h2></div>", unsafe_allow_html=True)
 
 # --- ALARM ---
@@ -125,3 +125,4 @@ st.markdown('<div class="footer">© 2026 Programmed by Bolyzockt | Leon</div>', 
 if wer_ist_weg:
     time.sleep(5)
     st.rerun()
+
