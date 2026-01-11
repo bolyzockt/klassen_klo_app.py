@@ -3,16 +3,16 @@ import pandas as pd
 from datetime import datetime
 import io
 import random
-# WICHTIG: Erfordert 'pip install streamlit-autorefresh'
-from streamlit_autorefresh import st_autorefresh 
+import time
 
 # --- CONFIG ---
-st.set_page_config(page_title="Klo-Logbuch Prechtl v12", page_icon="👑", layout="wide")
+st.set_page_config(page_title="Klo-Logbuch Prechtl v13", page_icon="👑", layout="wide")
 
-# AUTOMATISCHER REFRESH (Alle 5 Sekunden wird die Seite neu geladen für den Timer)
-st_autorefresh(interval=5000, key="datarefresh")
+# --- STATE MANAGEMENT ---
+if 'logs' not in st.session_state: st.session_state.logs = []
+if 'auf_klo' not in st.session_state: st.session_state.auf_klo = {}
 
-# NAMEN & IHRE INDIVIDUELLEN FARBEN
+# NAMEN & FARBEN
 FARBEN = {
     "Leon": "#8A2BE2", "Arian": "#00CED1", "Alex": "#4682B4", 
     "Sem": "#1a1a1a", "Cinar": "#FF4500", "Liam": "#1E90FF", 
@@ -21,21 +21,14 @@ FARBEN = {
     "Anna": "#F08080", "Mia": "#FFB6C1", "Sofya": "#4B0082", 
     "Natalia": "#DDA0DD", "Lenny": "#0000FF"
 }
-
 LEHRER_PASSWORT = "prechtl"
 ALARM_ZEIT_MIN = 15
 
-# --- STATE MANAGEMENT ---
-if 'logs' not in st.session_state: st.session_state.logs = []
-if 'auf_klo' not in st.session_state: st.session_state.auf_klo = {}
-
 # Wer ist gerade weg?
 wer_ist_weg = list(st.session_state.auf_klo.keys())[0] if st.session_state.auf_klo else None
-
-# Hintergrundfarbe dynamisch anpassen
 bg_color = FARBEN.get(wer_ist_weg, "#1e1233") if wer_ist_weg else "#1e1233"
 
-# Zeit-Berechnung für den Live-Timer
+# Zeit-Berechnung
 dauer_minuten, rest_sekunden = 0, 0
 if wer_ist_weg:
     sekunden_weg = int((datetime.now() - st.session_state.auf_klo[wer_ist_weg]).total_seconds())
@@ -45,11 +38,7 @@ if wer_ist_weg:
 # --- STYLING ---
 st.markdown(f"""
     <style>
-    .stApp {{ 
-        background: {bg_color}; 
-        transition: background 0.8s ease-in-out; 
-        color: #ffffff; 
-    }}
+    .stApp {{ background: {bg_color}; transition: background 0.8s ease; color: white; }}
     .stButton>button {{
         background: rgba(255, 255, 255, 0.1);
         backdrop-filter: blur(15px);
@@ -59,83 +48,50 @@ st.markdown(f"""
         height: 120px;
         font-size: 22px !important;
         font-weight: 800;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.3);
     }}
-    /* Style für den aktiven Klo-Geher */
     div[data-testid="stButton"] button:contains("⌛") {{
-        background: white !important;
-        color: black !important;
+        background: white !important; color: black !important;
         border: 5px solid gold !important;
-        transform: scale(1.02);
-    }}
-    .status-card {{ 
-        background: rgba(0, 0, 0, 0.4); 
-        padding: 20px; 
-        border-radius: 25px; 
-        text-align: center; 
-        border: 1px solid rgba(255,255,255,0.1);
     }}
     .footer {{
-        position: fixed;
-        left: 0;
-        bottom: 0;
-        width: 100%;
-        background-color: rgba(0,0,0,0.7);
-        color: white;
-        text-align: center;
-        padding: 15px;
-        font-family: sans-serif;
-        font-size: 16px;
-        font-weight: bold;
-        border-top: 2px solid rgba(255,255,255,0.1);
-        z-index: 1000;
+        position: fixed; left: 0; bottom: 0; width: 100%;
+        background-color: rgba(0,0,0,0.8); color: white;
+        text-align: center; padding: 15px; font-weight: bold;
     }}
     header {{visibility: hidden;}} footer {{visibility: hidden;}}
     </style>
     """, unsafe_allow_html=True)
 
-st.markdown("<h1 style='text-align: center; margin-top: -50px;'>👑 PRECHTL CONTROL CENTER v12</h1>", unsafe_allow_html=True)
+st.markdown("<h1 style='text-align: center; margin-top: -50px;'>👑 PRECHTL CONTROL CENTER v13</h1>", unsafe_allow_html=True)
 
-# --- STATUS ANZEIGE (OBEN) ---
+# --- DASHBOARD ---
 c1, c2, c3 = st.columns(3)
-with c1:
-    st.markdown(f"<div class='status-card'><h3>🏫 IM RAUM</h3><h2>{len(FARBEN) - (1 if wer_ist_weg else 0)}</h2></div>", unsafe_allow_html=True)
-with c2: 
-    st.markdown(f"<div class='status-card'><h3>🚽 STATUS</h3><h2>{'Jemand ist am kacken' if wer_ist_weg else 'FREI'}</h2></div>", unsafe_allow_html=True)
-with c3:
-    st.markdown(f"<div class='status-card'><h3>⏳ LIVE-ZEIT</h3><h2>{dauer_minuten}m {rest_sekunden}s</h2></div>", unsafe_allow_html=True)
+with c1: st.markdown(f"<div style='text-align:center'><h3>🏫 IM RAUM</h3><h2>{len(FARBEN) - (1 if wer_ist_weg else 0)}</h2></div>", unsafe_allow_html=True)
+with c2: st.markdown(f"<div style='text-align:center'><h3>🚽 STATUS</h3><h2>{'BESETZT' if wer_ist_weg else 'FREI'}</h2></div>", unsafe_allow_html=True)
+with c3: st.markdown(f"<div style='text-align:center'><h3>⏳ LIVE-ZEIT</h3><h2>{dauer_minuten}m {rest_sekunden}s</h2></div>", unsafe_allow_html=True)
 
-# --- ALARM BEI 15 MINUTEN ---
+# --- ALARM ---
 if wer_ist_weg and dauer_minuten >= ALARM_ZEIT_MIN:
-    st.markdown(f"<h1 style='color: red; text-align: center; background: white; border: 10px solid red; padding: 10px; border-radius: 20px;'>🚨 {wer_ist_weg.upper()} ÜBER 15 MIN! 🚨</h1>", unsafe_allow_html=True)
+    st.markdown(f"<h1 style='color: red; text-align: center; background: white; border: 10px solid red; padding: 10px;'>🚨 {wer_ist_weg.upper()} SEIT {dauer_minuten} MINUTEN WEG! 🚨</h1>", unsafe_allow_html=True)
 
 st.write("---")
 
-# --- SCHÜLER GRID ---
+# --- GRID ---
 cols = st.columns(3)
-namen_sortiert = sorted(FARBEN.keys())
-
-for i, name in enumerate(namen_sortiert):
+for i, name in enumerate(sorted(FARBEN.keys())):
     with cols[i % 3]:
-        ist_dieser_weg = (wer_ist_weg == name)
-        deaktiviert = (wer_ist_weg is not None and not ist_dieser_weg)
+        weg = (wer_ist_weg == name)
+        deakt = (wer_ist_weg is not None and not weg)
+        label = f"⌛ {name}\n({dauer_minuten}m {rest_sekunden}s)\nZURÜCK" if weg else f"{name}"
         
-        if ist_dieser_weg:
-            label = f"⌛ {name}\n({dauer_minuten}m {rest_sekunden}s)\nZURÜCKKOMMEN"
-        else:
-            label = f"{name}"
-        
-        if st.button(label, key=f"btn_{name}", use_container_width=True, disabled=deaktiviert):
+        if st.button(label, key=f"b_{name}", use_container_width=True, disabled=deakt):
             jetzt = datetime.now()
-            if not ist_dieser_weg:
-                # Jemand geht los
+            if not weg:
                 st.session_state.auf_klo[name] = jetzt
             else:
-                # Jemand kommt zurück
                 start_zeit = st.session_state.auf_klo.pop(name)
                 diff = jetzt - start_zeit
                 m, s = divmod(int(diff.total_seconds()), 60)
-                
                 st.session_state.logs.append({
                     "Datum": jetzt.strftime("%d.%m.%Y"),
                     "Name": name,
@@ -145,34 +101,27 @@ for i, name in enumerate(namen_sortiert):
                 })
             st.rerun()
 
-# --- LEHRER PROTOKOLL (SICHER) ---
-st.write("")
+# --- LEHRER BEREICH ---
 st.write("")
 with st.expander("🔐 LEHRER-PROTOKOLL"): 
-    pw = st.text_input("Administrator-Passwort", type="password")
+    pw = st.text_input("Passwort", type="password")
     if pw == LEHRER_PASSWORT:
-        st.success("Willkommen, Frau Prechtl😜.")
         if st.session_state.logs:
             df = pd.DataFrame(st.session_state.logs)
-            st.table(df[["Datum", "Name", "Von", "Bis", "Dauer"]])
-            
-            # Excel Export
+            st.table(df)
             buffer = io.BytesIO()
             with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
                 df.to_excel(writer, index=False)
-            st.download_button("📥 Excel-Liste herunterladen", buffer.getvalue(), "Klo_Protokoll.xlsx", "application/vnd.ms-excel")
-            
+            st.download_button("📥 Excel Liste", buffer.getvalue(), "Klo_Log.xlsx")
             if st.button("🗑️ Log löschen"):
                 st.session_state.logs = []
                 st.rerun()
-        else:
-            st.write("Noch keine Einträge.")
-    elif pw != "":
-        st.error("Passwort falsch!")
+    elif pw != "": st.error("Falsch!")
 
-# --- COPYRIGHT FOOTER ---
-st.markdown("""
-    <div class="footer">
-        © 2026 Programmed by Bolyzockt | Leon
-    </div>
-    """, unsafe_allow_html=True)
+# --- FOOTER ---
+st.markdown('<div class="footer">© 2026 Programmed by Bolyzockt | Leon</div>', unsafe_allow_html=True)
+
+# --- TIMER LOGIK (ERSETZT REFRESH MODUL) ---
+if wer_ist_weg:
+    time.sleep(5)
+    st.rerun()
