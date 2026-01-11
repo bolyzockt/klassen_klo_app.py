@@ -1,3 +1,2 @@
-streamlit-autorefresh
-xlsxwriter
 pandas
+xlsxwriter
