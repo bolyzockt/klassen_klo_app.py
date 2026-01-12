@@ -2,14 +2,18 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 from streamlit_gsheets import GSheetsConnection
-import io
 import time
 
 # --- CONFIG ---
-st.set_page_config(page_title="Klo-Logbuch Prechtl v16", page_icon="👑", layout="wide")
+st.set_page_config(page_title="Klo-Logbuch Prechtl v17", page_icon="👑", layout="wide")
 
-# --- GOOGLE SHEETS VERBINDUNG ---
-conn = st.connection("gsheets", type=GSheetsConnection)
+# --- GOOGLE SHEETS VERBINDUNG (mit Fehler-Abfang) ---
+try:
+    conn = st.connection("gsheets", type=GSheetsConnection)
+    SHEET_URL = st.secrets["gsheets_url"]
+except Exception as e:
+    st.error("⚠️ Google Sheets Verbindung fehlt! Link in den Secrets prüfen.")
+    SHEET_URL = None
 
 # --- STATE MANAGEMENT ---
 if 'auf_klo' not in st.session_state:
@@ -42,32 +46,26 @@ st.markdown(f"""
     .stApp {{ background: {bg_color}; transition: background 0.8s ease; color: white; }}
     .stButton>button {{
         background: rgba(255, 255, 255, 0.1);
-        backdrop-filter: blur(15px);
+        backdrop-filter: blur(10px);
         border: 2px solid rgba(255, 255, 255, 0.2);
-        border-radius: 20px;
-        color: white;
-        height: 120px;
-        font-size: 22px !important;
-        font-weight: bold;
+        border-radius: 20px; color: white; height: 110px; font-weight: bold;
     }}
-    header {{visibility: hidden;}} footer {{visibility: hidden;}}
     .footer {{
         position: fixed; left: 0; bottom: 0; width: 100%;
         background-color: rgba(0,0,0,0.8); color: white;
-        text-align: center; padding: 15px; font-weight: bold;
+        text-align: center; padding: 10px; font-weight: bold;
     }}
+    header {{visibility: hidden;}} footer {{visibility: hidden;}}
     </style>
     """, unsafe_allow_html=True)
 
-st.markdown("<h1 style='text-align: center; margin-top: -50px;'>👑 PRECHTL CONTROL CENTER v16</h1>", unsafe_allow_html=True)
+st.markdown("<h1 style='text-align: center; margin-top: -50px;'>👑 PRECHTL CONTROL CENTER v17</h1>", unsafe_allow_html=True)
 
 # --- DASHBOARD ---
 c1, c2, c3 = st.columns(3)
 with c1: st.metric("🏫 IM RAUM", len(FARBEN) - (1 if wer_ist_weg else 0))
 with c2: st.metric("🚽 STATUS", "BESETZT" if wer_ist_weg else "FREI")
 with c3: st.metric("⏳ LIVE-ZEIT", f"{dauer_minuten}m {rest_sekunden}s")
-
-st.write("---")
 
 # --- GRID ---
 cols = st.columns(3)
@@ -96,15 +94,16 @@ for i, name in enumerate(sorted(FARBEN.keys())):
                     "Dauer": f"{m}m {s}s"
                 }])
                 
-                # SCHNELLER SPEICHERN (Nur beim Zurückkommen!)
-                try:
-                    url = st.secrets["gsheets_url"]
-                    # Wir lesen die Daten nur einmal kurz, um sie zu erweitern
-                    existing_data = conn.read(spreadsheet=url, ttl=0) 
-                    updated_df = pd.concat([existing_data, new_row], ignore_index=True)
-                    conn.update(spreadsheet=url, data=updated_df)
-                except Exception as e:
-                    st.error("Speicher-Lag! Daten wurden lokal gesichert.")
+                # ONLINE SPEICHERN MIT ERROR-CHECK
+                if SHEET_URL:
+                    try:
+                        # Versuche zu lesen und zu updaten
+                        current_df = conn.read(spreadsheet=SHEET_URL, ttl=0)
+                        updated_df = pd.concat([current_df, new_row], ignore_index=True)
+                        conn.update(spreadsheet=SHEET_URL, data=updated_df)
+                        st.toast(f"✅ Gespeichert für {name}")
+                    except Exception as e:
+                        st.error("⚠️ Konnte nicht in Google schreiben. Link/Freigabe prüfen!")
                 
                 st.rerun()
 
@@ -112,16 +111,20 @@ for i, name in enumerate(sorted(FARBEN.keys())):
 with st.expander("🔐 ONLINE PROTOKOLL"): 
     pw = st.text_input("Passwort", type="password")
     if pw == LEHRER_PASSWORT:
-        url = st.secrets.get("gsheets_url", "#")
-        st.markdown(f"### [Hier klicken für die Online-Tabelle]({url})")
-        if st.button("Tabelle jetzt laden"):
-            data = conn.read(spreadsheet=url, ttl=0)
-            st.table(data)
+        if SHEET_URL:
+            st.markdown(f"### [Link zur Google Tabelle]({SHEET_URL})")
+            if st.button("Tabelle jetzt laden"):
+                try:
+                    data = conn.read(spreadsheet=SHEET_URL, ttl=0)
+                    st.table(data)
+                except:
+                    st.warning("Tabelle ist noch leer oder Link falsch.")
+    elif pw != "": st.error("Falsch!")
 
 # FOOTER
 st.markdown('<div class="footer">© 2026 Programmed by Bolyzockt | Leon</div>', unsafe_allow_html=True)
 
-# --- PERFORMANCE TIMER ---
+# LIVE TIMER
 if wer_ist_weg:
-    time.sleep(5) # Wartezeit für weniger Lag
+    time.sleep(5)
     st.rerun()
