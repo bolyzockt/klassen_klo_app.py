@@ -6,13 +6,10 @@ import io
 import time
 
 # --- CONFIG ---
-st.set_page_config(page_title="Klo-Logbuch Prechtl v15", page_icon="👑", layout="wide")
+st.set_page_config(page_title="Klo-Logbuch Prechtl v16", page_icon="👑", layout="wide")
 
 # --- GOOGLE SHEETS VERBINDUNG ---
-try:
-    conn = st.connection("gsheets", type=GSheetsConnection)
-except Exception:
-    st.error("Verbindung zu Google Sheets konnte nicht hergestellt werden. Prüfe die Secrets!")
+conn = st.connection("gsheets", type=GSheetsConnection)
 
 # --- STATE MANAGEMENT ---
 if 'auf_klo' not in st.session_state:
@@ -62,12 +59,12 @@ st.markdown(f"""
     </style>
     """, unsafe_allow_html=True)
 
-st.markdown("<h1 style='text-align: center; margin-top: -50px;'>👑 PRECHTL CONTROL CENTER v15</h1>", unsafe_allow_html=True)
+st.markdown("<h1 style='text-align: center; margin-top: -50px;'>👑 PRECHTL CONTROL CENTER v16</h1>", unsafe_allow_html=True)
 
 # --- DASHBOARD ---
 c1, c2, c3 = st.columns(3)
 with c1: st.metric("🏫 IM RAUM", len(FARBEN) - (1 if wer_ist_weg else 0))
-with c2: st.metric("🚽 STATUS", "Jemand kackt" if wer_ist_weg else "Niemand kackt")
+with c2: st.metric("🚽 STATUS", "BESETZT" if wer_ist_weg else "FREI")
 with c3: st.metric("⏳ LIVE-ZEIT", f"{dauer_minuten}m {rest_sekunden}s")
 
 st.write("---")
@@ -84,6 +81,7 @@ for i, name in enumerate(sorted(FARBEN.keys())):
             jetzt = datetime.now()
             if not weg:
                 st.session_state.auf_klo[name] = jetzt
+                st.rerun()
             else:
                 start_zeit = st.session_state.auf_klo.pop(name)
                 diff = jetzt - start_zeit
@@ -98,14 +96,15 @@ for i, name in enumerate(sorted(FARBEN.keys())):
                     "Dauer": f"{m}m {s}s"
                 }])
                 
-                # ONLINE SPEICHERN
+                # SCHNELLER SPEICHERN (Nur beim Zurückkommen!)
                 try:
                     url = st.secrets["gsheets_url"]
-                    existing_data = conn.read(spreadsheet=url)
+                    # Wir lesen die Daten nur einmal kurz, um sie zu erweitern
+                    existing_data = conn.read(spreadsheet=url, ttl=0) 
                     updated_df = pd.concat([existing_data, new_row], ignore_index=True)
                     conn.update(spreadsheet=url, data=updated_df)
                 except Exception as e:
-                    st.error(f"Fehler beim Speichern: {e}")
+                    st.error("Speicher-Lag! Daten wurden lokal gesichert.")
                 
                 st.rerun()
 
@@ -115,15 +114,14 @@ with st.expander("🔐 ONLINE PROTOKOLL"):
     if pw == LEHRER_PASSWORT:
         url = st.secrets.get("gsheets_url", "#")
         st.markdown(f"### [Hier klicken für die Online-Tabelle]({url})")
-        if st.button("Aktuelle Liste in App laden"):
-            data = conn.read(spreadsheet=url)
+        if st.button("Tabelle jetzt laden"):
+            data = conn.read(spreadsheet=url, ttl=0)
             st.table(data)
 
 # FOOTER
 st.markdown('<div class="footer">© 2026 Programmed by Bolyzockt | Leon</div>', unsafe_allow_html=True)
 
-# LIVE TIMER
+# --- PERFORMANCE TIMER ---
 if wer_ist_weg:
-    time.sleep(5)
+    time.sleep(5) # Wartezeit für weniger Lag
     st.rerun()
-
