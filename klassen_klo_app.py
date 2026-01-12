@@ -4,7 +4,7 @@ from datetime import datetime
 import time
 
 # --- CONFIG ---
-st.set_page_config(page_title="Klo-Logbuch Prechtl", page_icon="👑", layout="wide")
+st.set_page_config(page_title="Ultimative Klo Liste 4000 v500", page_icon="🚽", layout="wide")
 
 # --- STATE MANAGEMENT ---
 if 'log_data' not in st.session_state:
@@ -28,10 +28,21 @@ LEHRER_PASSWORT = "prechtl"
 wer_ist_weg = list(st.session_state.auf_klo.keys())[0] if st.session_state.auf_klo else None
 bg_color = FARBEN.get(wer_ist_weg, "#1e1233") if wer_ist_weg else "#1e1233"
 
-# --- STYLE (Dein ursprüngliches Rave-Design) ---
+# --- STYLE ---
 st.markdown(f"""
     <style>
     .stApp {{ background-color: {bg_color}; transition: background 0.8s ease; color: white; }}
+    
+    /* Der ultimative Titel-Glow */
+    .ultra-title {{
+        text-align: center;
+        font-size: 50px !important;
+        font-weight: 900;
+        color: white;
+        text-shadow: 0 0 10px rgba(255,255,255,0.8), 0 0 20px rgba(255,255,255,0.5);
+        margin-bottom: 20px;
+    }}
+
     .stButton>button {{
         background: rgba(255, 255, 255, 0.1);
         backdrop-filter: blur(15px);
@@ -43,18 +54,20 @@ st.markdown(f"""
         font-weight: 800;
         box-shadow: 0 4px 15px rgba(0,0,0,0.3);
     }}
+    
     div[data-testid="stButton"] button:contains("⌛") {{
         background: white !important;
         color: black !important;
         border: 5px solid gold !important;
+        box-shadow: 0 0 30px rgba(255, 215, 0, 0.6);
     }}
-    /* Tabelle schöner machen */
-    .stTable {{ background-color: rgba(255,255,255,0.05); border-radius: 10px; }}
+    
     header {{visibility: hidden;}} footer {{visibility: hidden;}}
     </style>
     """, unsafe_allow_html=True)
 
-st.markdown("<h1 style='text-align: center;'>👑 PRECHTL LOGBUCH</h1>", unsafe_allow_html=True)
+# Neuer ultimativer Header
+st.markdown('<div class="ultra-title">ULTIMATIVE KLO LISTE 4000 v500</div>', unsafe_allow_html=True)
 
 # --- STATUS ---
 c1, c2, c3 = st.columns(3)
@@ -63,7 +76,7 @@ with c2: st.metric("🚽 STATUS", "BESETZT" if wer_ist_weg else "FREI")
 if wer_ist_weg:
     sekunden_weg = int((datetime.now() - st.session_state.auf_klo[wer_ist_weg]).total_seconds())
     m, s = divmod(sekunden_weg, 60)
-    with c3: st.metric("⏳ LIVE-ZEIT", f"{m}m {s}s")
+    with c3: st.metric("⏳ LIVE-TIMER", f"{m}m {s}s")
 
 st.write("---")
 
@@ -96,35 +109,21 @@ for i, name in enumerate(namen_sortiert):
                 st.session_state.log_data = pd.concat([st.session_state.log_data, neue_daten], ignore_index=True)
                 st.rerun()
 
-# --- PROTOKOLL TABELLE UNTER PASSWORT ---
+# --- PROTOKOLL ---
 st.write("---")
-with st.expander("🔐 LEHRER-PROTOKOLL"):
+with st.expander("🔐 LEHRER-PROTOKOLL (PASSWORT: prechtl)"):
     pw_input = st.text_input("Administrator Passwort", type="password")
     if pw_input == LEHRER_PASSWORT:
-        st.subheader("Aktuelle Liste")
         if not st.session_state.log_data.empty:
-            # Hier ist die Tabelle
             st.dataframe(st.session_state.log_data, use_container_width=True)
-            
-            # CSV Download Button
             csv = st.session_state.log_data.to_csv(index=False).encode('utf-8')
-            st.download_button(
-                label="📥 Als Excel/CSV Datei speichern",
-                data=csv,
-                file_name=f"Klo_Protokoll_{datetime.now().strftime('%H_%M')}.csv",
-                mime="text/csv",
-            )
-            
-            # Lösch-Funktion (Falls Frau Prechtl die Liste leeren will)
-            if st.button("Tabelle für neue Stunde leeren"):
-                st.session_state.log_data = pd.DataFrame(columns=["Datum", "Name", "Von", "Bis", "Dauer"])
-                st.rerun()
+            st.download_button(label="📥 Download Protokoll", data=csv, file_name="klo_log_ultra.csv", mime="text/csv")
         else:
-            st.info("Noch keine Einträge im Protokoll.")
+            st.info("Noch keine Daten.")
     elif pw_input != "":
         st.error("Falsches Passwort!")
 
-# Auto-Refresh alle 5 Sekunden wenn jemand weg ist
+# Auto-Refresh
 if wer_ist_weg:
     time.sleep(5)
     st.rerun()
