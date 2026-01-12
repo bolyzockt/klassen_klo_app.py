@@ -14,7 +14,6 @@ if 'auf_klo' not in st.session_state:
     st.session_state.auf_klo = {}
 
 # DEINE NAMEN & FARBEN & EMOJIS
-# Ich habe jedem Namen ein passendes Emoji gegeben
 SCHUELER_INFO = {
     "Leon": {"farbe": "#8A2BE2", "emoji": "⚡"},
     "Arian": {"farbe": "#00CED1", "emoji": "🔥"},
@@ -34,7 +33,9 @@ SCHUELER_INFO = {
     "Natalia": {"farbe": "#DDA0DD", "emoji": "🌙"},
     "Lenny": {"farbe": "#0000FF", "emoji": "🚀"}
 }
-LEHRER_PASSWORT = "prechtl"
+
+# HIER IST DAS PASSWORT IM CODE GESPEICHERT (wird in der App nicht angezeigt)
+GEHEIMES_PW = "prechtl"
 
 # Wer ist weg?
 wer_ist_weg = list(st.session_state.auf_klo.keys())[0] if st.session_state.auf_klo else None
@@ -72,7 +73,6 @@ st.markdown(f"""
         transform: scale(1.02);
     }}
     
-    /* Der Besetzt-Button Modus */
     div[data-testid="stButton"] button:contains("🚽") {{
         background: white !important;
         color: black !important;
@@ -106,8 +106,6 @@ for i, name in enumerate(namen_sortiert):
     with cols[i % 3]:
         ist_dieser_weg = (wer_ist_weg == name)
         info = SCHUELER_INFO[name]
-        
-        # Label mit Emoji
         label = f"🚽 {info['emoji']} {name} {info['emoji']}" if ist_dieser_weg else f"{info['emoji']} {name}"
         
         if st.button(label, key=f"btn_{name}", use_container_width=True, disabled=(wer_ist_weg is not None and not ist_dieser_weg)):
@@ -130,22 +128,23 @@ for i, name in enumerate(namen_sortiert):
                 st.session_state.log_data = pd.concat([st.session_state.log_data, neue_daten], ignore_index=True)
                 st.rerun()
 
-# --- PROTOKOLL ---
+# --- GEHEIMER PROTOKOLL BEREICH ---
 st.write("---")
-with st.expander("🛠️ ADMIN TERMINAL (Passwort: prechtl)"):
-    pw_input = st.text_input("Access Code", type="password")
-    if pw_input == LEHRER_PASSWORT:
+with st.expander("🛠️ ADMIN TERMINAL"):
+    pw_input = st.text_input("Access Code erforderlich", type="password")
+    if pw_input == GEHEIMES_PW:
+        st.success("ZUGRIFF GEWÄHRT")
         if not st.session_state.log_data.empty:
             st.dataframe(st.session_state.log_data, use_container_width=True)
             csv = st.session_state.log_data.to_csv(index=False).encode('utf-8')
-            st.download_button(label="💾 DATEN-EXTRAKTION (CSV)", data=csv, file_name="klo_log_v500.csv", mime="text/csv")
+            st.download_button(label="💾 DATEN-EXPORT", data=csv, file_name="klo_log.csv", mime="text/csv")
             if st.button("🗑️ PROTOKOLL LÖSCHEN"):
                 st.session_state.log_data = pd.DataFrame(columns=["Datum", "Name", "Von", "Bis", "Dauer"])
                 st.rerun()
         else:
-            st.info("Datenbank leer.")
+            st.info("Keine Daten in der Datenbank.")
     elif pw_input != "":
-        st.error("ACCESS DENIED!")
+        st.error("ZUGRIFF VERWEIGERT!")
 
 # Auto-Refresh
 if wer_ist_weg:
