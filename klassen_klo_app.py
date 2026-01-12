@@ -4,17 +4,16 @@ from datetime import datetime
 import time
 
 # --- CONFIG ---
-st.set_page_config(page_title="Klo-Logbuch Prechtl", page_icon="🚽", layout="wide")
+st.set_page_config(page_title="Klo-Logbuch Prechtl", page_icon="👑", layout="wide")
 
 # --- STATE MANAGEMENT ---
-# Hier werden die Daten gespeichert, solange die App läuft
 if 'log_data' not in st.session_state:
     st.session_state.log_data = pd.DataFrame(columns=["Datum", "Name", "Von", "Bis", "Dauer"])
 
 if 'auf_klo' not in st.session_state:
     st.session_state.auf_klo = {}
 
-# NAMEN & DEINE FARBEN
+# DEINE NAMEN & FARBEN
 FARBEN = {
     "Leon": "#8A2BE2", "Arian": "#00CED1", "Alex": "#4682B4", 
     "Sem": "#1a1a1a", "Cinar": "#FF4500", "Liam": "#1E90FF", 
@@ -23,6 +22,7 @@ FARBEN = {
     "Anna": "#F08080", "Mia": "#FFB6C1", "Sofya": "#4B0082", 
     "Natalia": "#DDA0DD", "Lenny": "#0000FF"
 }
+LEHRER_PASSWORT = "prechtl"
 
 # Wer ist weg?
 wer_ist_weg = list(st.session_state.auf_klo.keys())[0] if st.session_state.auf_klo else None
@@ -43,12 +43,13 @@ st.markdown(f"""
         font-weight: 800;
         box-shadow: 0 4px 15px rgba(0,0,0,0.3);
     }}
-    /* Gold-Effekt wenn jemand weg ist */
     div[data-testid="stButton"] button:contains("⌛") {{
         background: white !important;
         color: black !important;
         border: 5px solid gold !important;
     }}
+    /* Tabelle schöner machen */
+    .stTable {{ background-color: rgba(255,255,255,0.05); border-radius: 10px; }}
     header {{visibility: hidden;}} footer {{visibility: hidden;}}
     </style>
     """, unsafe_allow_html=True)
@@ -75,7 +76,6 @@ for i, name in enumerate(namen_sortiert):
         ist_dieser_weg = (wer_ist_weg == name)
         label = f"⌛ {name}" if ist_dieser_weg else name
         
-        # Button ist deaktiviert, wenn schon jemand anderes weg ist
         if st.button(label, key=f"btn_{name}", use_container_width=True, disabled=(wer_ist_weg is not None and not ist_dieser_weg)):
             jetzt = datetime.now()
             if not ist_dieser_weg:
@@ -86,7 +86,6 @@ for i, name in enumerate(namen_sortiert):
                 diff = jetzt - start_zeit
                 m, s = divmod(int(diff.total_seconds()), 60)
                 
-                # In die interne Liste eintragen
                 neue_daten = pd.DataFrame([{
                     "Datum": jetzt.strftime("%d.%m.%Y"),
                     "Name": name,
@@ -97,22 +96,35 @@ for i, name in enumerate(namen_sortiert):
                 st.session_state.log_data = pd.concat([st.session_state.log_data, neue_daten], ignore_index=True)
                 st.rerun()
 
-# --- DOWNLOAD FÜR DIE LEHRERIN ---
+# --- PROTOKOLL TABELLE UNTER PASSWORT ---
 st.write("---")
-with st.expander("🔐 DOWNLOAD PROTOKOLL"):
-    if not st.session_state.log_data.empty:
-        st.table(st.session_state.log_data)
-        csv = st.session_state.log_data.to_csv(index=False).encode('utf-8')
-        st.download_button(
-            label="📥 Liste als CSV speichern",
-            data=csv,
-            file_name=f"Klo_Log_{datetime.now().strftime('%d_%m_%Y')}.csv",
-            mime="text/csv",
-        )
-    else:
-        st.write("Noch keine Einträge vorhanden.")
+with st.expander("🔐 LEHRER-PROTOKOLL"):
+    pw_input = st.text_input("Administrator Passwort", type="password")
+    if pw_input == LEHRER_PASSWORT:
+        st.subheader("Aktuelle Liste")
+        if not st.session_state.log_data.empty:
+            # Hier ist die Tabelle
+            st.dataframe(st.session_state.log_data, use_container_width=True)
+            
+            # CSV Download Button
+            csv = st.session_state.log_data.to_csv(index=False).encode('utf-8')
+            st.download_button(
+                label="📥 Als Excel/CSV Datei speichern",
+                data=csv,
+                file_name=f"Klo_Protokoll_{datetime.now().strftime('%H_%M')}.csv",
+                mime="text/csv",
+            )
+            
+            # Lösch-Funktion (Falls Frau Prechtl die Liste leeren will)
+            if st.button("Tabelle für neue Stunde leeren"):
+                st.session_state.log_data = pd.DataFrame(columns=["Datum", "Name", "Von", "Bis", "Dauer"])
+                st.rerun()
+        else:
+            st.info("Noch keine Einträge im Protokoll.")
+    elif pw_input != "":
+        st.error("Falsches Passwort!")
 
-# Automatischer Refresh für den Live-Timer
+# Auto-Refresh alle 5 Sekunden wenn jemand weg ist
 if wer_ist_weg:
     time.sleep(5)
     st.rerun()
