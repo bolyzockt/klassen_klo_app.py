@@ -4,110 +4,97 @@ from datetime import datetime
 import time
 
 # --- CONFIG ---
-st.set_page_config(page_title="Ultimative Klo Liste 4000 v500", page_icon="🚽", layout="wide")
+st.set_page_config(page_title="Frau Prechtls krasses Terminal - 8bm", page_icon="🚽", layout="wide")
 
-# --- STATE MANAGEMENT ---
-if 'log_data' not in st.session_state:
-    st.session_state.log_data = pd.DataFrame(columns=["Datum", "Name", "Von", "Bis", "Dauer"])
+# --- GLOBALER SPEICHER (Server-Seitig) ---
+@st.cache_resource
+def get_permanent_log():
+    return {"df": pd.DataFrame(columns=["Datum", "Name", "Von", "Bis", "Dauer"])}
+
+db = get_permanent_log()
 
 if 'auf_klo' not in st.session_state:
     st.session_state.auf_klo = {}
 
-# DEINE NAMEN & FARBEN & EMOJIS
+# DEINE KLASSE 8bm (2026 Edition)
 SCHUELER_INFO = {
-    "Leon": {"farbe": "#8A2BE2", "emoji": "⚡"},
-    "Arian": {"farbe": "#00CED1", "emoji": "🔥"},
-    "Alex": {"farbe": "#4682B4", "emoji": "🧊"},
-    "Sem": {"farbe": "#1a1a1a", "emoji": "🕶️"},
-    "Cinar": {"farbe": "#FF4500", "emoji": "🌋"},
-    "Liam": {"farbe": "#1E90FF", "emoji": "🌊"},
-    "Nikita": {"farbe": "#FF1493", "emoji": "🌸"},
-    "Malik": {"farbe": "#DAA520", "emoji": "👑"},
-    "Luca": {"farbe": "#32CD32", "emoji": "🍀"},
-    "Lakisha": {"farbe": "#9370DB", "emoji": "✨"},
-    "Valeria": {"farbe": "#FF69B4", "emoji": "💎"},
-    "Marianna": {"farbe": "#8B0000", "emoji": "🌹"},
-    "Anna": {"farbe": "#F08080", "emoji": "🍭"},
-    "Mia": {"farbe": "#FFB6C1", "emoji": "🌈"},
-    "Sofya": {"farbe": "#4B0082", "emoji": "🔮"},
-    "Natalia": {"farbe": "#DDA0DD", "emoji": "🌙"},
-    "Lenny": {"farbe": "#0000FF", "emoji": "🚀"}
+    "Leon": {"emoji": "⚡"},
+    "Arian": {"emoji": "🔥"},
+    "Alex": {"emoji": "🧊"},
+    "Sem": {"emoji": "🕶️"},
+    "Cinar": {"emoji": "🌋"},
+    "Liam": {"emoji": "🌊"},
+    "Nikita": {"emoji": "🌸"},
+    "Malik": {"emoji": "👑"},
+    "Luca": {"emoji": "🍀"},
+    "Lakisha": {"emoji": "✨"},
+    "Valeria": {"emoji": "💎"},
+    "Marianna": {"emoji": "🌹"},
+    "Anna": {"emoji": "🍭"},
+    "Mia": {"emoji": "🌈"},
+    "Sofya": {"emoji": "🔮"},
+    "Natalia": {"emoji": "🌙"},
+    "Lenny": {"emoji": "🚀"}
 }
 
-# HIER IST DAS PASSWORT IM CODE GESPEICHERT (wird in der App nicht angezeigt)
+# NEUES PASSWORT
 GEHEIMES_PW = "prechtl"
+ALARM_MINUTEN = 15
 
 # Wer ist weg?
 wer_ist_weg = list(st.session_state.auf_klo.keys())[0] if st.session_state.auf_klo else None
-current_color = SCHUELER_INFO.get(wer_ist_weg, {}).get("farbe", "#1e1233") if wer_ist_weg else "#1e1233"
+
+# Alarm-Logik
+ist_alarm = False
+sekunden_weg = 0
+if wer_ist_weg:
+    sekunden_weg = int((datetime.now() - st.session_state.auf_klo[wer_ist_weg]).total_seconds())
+    if sekunden_weg >= ALARM_MINUTEN * 60:
+        ist_alarm = True
+
+# Hintergrundfarbe
+bg_color = "#FF0000" if ist_alarm else ("#8A2BE2" if wer_ist_weg else "#1e1233")
 
 # --- STYLE ---
 st.markdown(f"""
     <style>
-    .stApp {{ background-color: {current_color}; transition: background 0.8s ease; color: white; }}
-    
-    .ultra-title {{
-        text-align: center;
-        font-size: 45px !important;
-        font-weight: 900;
-        color: white;
-        text-shadow: 0 0 15px {current_color}, 0 0 30px white;
-        margin-bottom: 20px;
-        padding: 10px;
-    }}
-
+    .stApp {{ background-color: {bg_color}; transition: background 0.5s ease; color: white; }}
+    .ultra-title {{ text-align: center; font-size: 40px !important; font-weight: 900; text-shadow: 0 0 20px white; margin-bottom: 20px; }}
     .stButton>button {{
-        background: rgba(255, 255, 255, 0.1);
-        backdrop-filter: blur(15px);
-        border: 2px solid rgba(255, 255, 255, 0.2);
-        border-radius: 20px;
-        color: white;
-        height: 110px;
-        font-size: 24px !important;
-        font-weight: 800;
-        transition: all 0.3s;
+        background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px);
+        border: 2px solid rgba(255, 255, 255, 0.2); border-radius: 15px;
+        color: white; height: 80px; font-size: 18px !important; font-weight: bold;
     }}
-    
-    .stButton>button:hover {{
-        border-color: white;
-        transform: scale(1.02);
-    }}
-    
-    div[data-testid="stButton"] button:contains("🚽") {{
-        background: white !important;
-        color: black !important;
-        border: 5px solid gold !important;
-        box-shadow: 0 0 40px gold;
-    }}
-    
+    @keyframes blink {{ 0% {{ opacity: 1; }} 50% {{ opacity: 0.3; }} 100% {{ opacity: 1; }} }}
+    .alarm-text {{ color: yellow; font-weight: bold; text-align: center; font-size: 30px; animation: blink 1s infinite; border: 3px dashed yellow; border-radius: 10px; padding: 10px; }}
+    div[data-testid="stButton"] button:contains("🚽") {{ background: white !important; color: black !important; border: 5px solid gold !important; }}
+    .copyright {{ text-align: center; font-size: 12px; color: rgba(255,255,255,0.3); margin-top: 50px; }}
     header {{visibility: hidden;}} footer {{visibility: hidden;}}
     </style>
     """, unsafe_allow_html=True)
 
-# Header
-st.markdown('<div class="ultra-title">🚀 ULTIMATIVE KLO LISTE 4000 v500 🚀</div>', unsafe_allow_html=True)
+st.markdown('<div class="ultra-title">🚀 FRAU PRECHTLS KRASSES TERMINAL 🚀</div>', unsafe_allow_html=True)
 
-# --- STATUS DASHBOARD ---
+# --- DASHBOARD ---
 c1, c2, c3 = st.columns(3)
 with c1: st.metric("👥 IM RAUM", f"{len(SCHUELER_INFO) - (1 if wer_ist_weg else 0)}")
 with c2: st.metric("🚽 STATUS", "BESETZT 🛑" if wer_ist_weg else "FREI ✅")
 if wer_ist_weg:
-    sekunden_weg = int((datetime.now() - st.session_state.auf_klo[wer_ist_weg]).total_seconds())
     m, s = divmod(sekunden_weg, 60)
-    with c3: st.metric("⏳ MISSION TIME", f"{m:02d}:{s:02d}")
+    with c3: st.metric("⏳ ZEIT WEG", f"{m:02d}:{s:02d}")
+    if ist_alarm:
+        st.markdown(f'<div class="alarm-text">⚠️ ALARM: {wer_ist_weg} IST ÜBERFÄLLIG! ⚠️</div>', unsafe_allow_html=True)
 
 st.write("---")
 
-# --- SCHÜLER GRID ---
+# --- GRID ---
 cols = st.columns(3)
 namen_sortiert = sorted(SCHUELER_INFO.keys())
-
 for i, name in enumerate(namen_sortiert):
     with cols[i % 3]:
         ist_dieser_weg = (wer_ist_weg == name)
         info = SCHUELER_INFO[name]
-        label = f"🚽 {info['emoji']} {name} {info['emoji']}" if ist_dieser_weg else f"{info['emoji']} {name}"
-        
+        label = f"🚽 {info['emoji']} {name}" if ist_dieser_weg else f"{info['emoji']} {name}"
         if st.button(label, key=f"btn_{name}", use_container_width=True, disabled=(wer_ist_weg is not None and not ist_dieser_weg)):
             jetzt = datetime.now()
             if not ist_dieser_weg:
@@ -117,36 +104,29 @@ for i, name in enumerate(namen_sortiert):
                 start_zeit = st.session_state.auf_klo.pop(name)
                 diff = jetzt - start_zeit
                 m, s = divmod(int(diff.total_seconds()), 60)
-                
-                neue_daten = pd.DataFrame([{
-                    "Datum": jetzt.strftime("%d.%m.%Y"),
-                    "Name": f"{info['emoji']} {name}",
-                    "Von": start_zeit.strftime("%H:%M:%S"),
-                    "Bis": jetzt.strftime("%H:%M:%S"),
-                    "Dauer": f"{m}m {s}s"
-                }])
-                st.session_state.log_data = pd.concat([st.session_state.log_data, neue_daten], ignore_index=True)
+                neue_daten = pd.DataFrame([{"Datum": jetzt.strftime("%d.%m.%Y"), "Name": name, "Von": start_zeit.strftime("%H:%M:%S"), "Bis": jetzt.strftime("%H:%M:%S"), "Dauer": f"{m}m {s}s"}])
+                db["df"] = pd.concat([db["df"], neue_daten], ignore_index=True)
                 st.rerun()
 
-# --- GEHEIMER PROTOKOLL BEREICH ---
+# --- ADMIN TERMINAL ---
 st.write("---")
 with st.expander("🛠️ ADMIN TERMINAL"):
-    pw_input = st.text_input("Access Code erforderlich", type="password")
+    pw_input = st.text_input("Identity Verification", type="password", placeholder="Access Code eingeben...")
     if pw_input == GEHEIMES_PW:
-        st.success("ZUGRIFF GEWÄHRT")
-        if not st.session_state.log_data.empty:
-            st.dataframe(st.session_state.log_data, use_container_width=True)
-            csv = st.session_state.log_data.to_csv(index=False).encode('utf-8')
-            st.download_button(label="💾 DATEN-EXPORT", data=csv, file_name="klo_log.csv", mime="text/csv")
-            if st.button("🗑️ PROTOKOLL LÖSCHEN"):
-                st.session_state.log_data = pd.DataFrame(columns=["Datum", "Name", "Von", "Bis", "Dauer"])
-                st.rerun()
-        else:
-            st.info("Keine Daten in der Datenbank.")
+        st.success("Access Granted. 8bm Core Online.")
+        st.dataframe(db["df"], use_container_width=True)
+        csv = db["df"].to_csv(index=False).encode('utf-8')
+        st.download_button(label="💾 DOWNLOAD LOGS", data=csv, file_name="Prechtl_Log_8bm_2026.csv", mime="text/csv")
+        if st.button("🗑️ CLEAR SYSTEM MEMORY"):
+            db["df"] = pd.DataFrame(columns=["Datum", "Name", "Von", "Bis", "Dauer"])
+            st.rerun()
+        st.markdown("---")
+        st.write("© 2026 Leon | LeonKing OS v501")
     elif pw_input != "":
-        st.error("ZUGRIFF VERWEIGERT!")
+        st.error("Invalid Code. Access Denied.")
 
-# Auto-Refresh
+st.markdown('<div class="copyright">© 2026 Leon - Frau Prechtls krasses Terminal 8bm</div>', unsafe_allow_html=True)
+
 if wer_ist_weg:
-    time.sleep(5)
+    time.sleep(2)
     st.rerun()
