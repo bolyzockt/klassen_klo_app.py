@@ -37,7 +37,7 @@ SCHUELER_INFO = {
     "Lenny": {"emoji": "🚀"}
 }
 
-# NEUES PASSWORT
+# PASSWORT & SETTINGS
 GEHEIMES_PW = "prechtl"
 ALARM_MINUTEN = 15
 
@@ -121,11 +121,11 @@ with st.expander("🛠️ ADMIN TERMINAL"):
             db["df"] = pd.DataFrame(columns=["Datum", "Name", "Von", "Bis", "Dauer"])
             st.rerun()
         st.markdown("---")
-        st.write("© 2026 Leon | LeonKing OS v501")
+        st.write("© 2026 bolyzockt | System: bolyzockt OS v501")
     elif pw_input != "":
         st.error("Invalid Code. Access Denied.")
 
-st.markdown('<div class="copyright">© 2026 Leon - Frau Prechtls krasses Terminal 8bm</div>', unsafe_allow_html=True)
+st.markdown('<div class="copyright">© 2026 bolyzockt - Frau Prechtls krasses Terminal 8bm</div>', unsafe_allow_html=True)
 
 if wer_ist_weg:
     time.sleep(2)
