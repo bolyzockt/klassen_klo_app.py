@@ -3,10 +3,8 @@ import pandas as pd
 from datetime import datetime
 import time
 
-# --- CONFIG ---
 st.set_page_config(page_title="Frau Prechtls krasses Terminal - 8bm", page_icon="🚽", layout="wide")
 
-# --- GLOBALER SPEICHER (Server-Seitig) ---
 @st.cache_resource
 def get_permanent_log():
     return {"df": pd.DataFrame(columns=["Datum", "Name", "Von", "Bis", "Dauer"])}
@@ -16,7 +14,6 @@ db = get_permanent_log()
 if 'auf_klo' not in st.session_state:
     st.session_state.auf_klo = {}
 
-# DEINE KLASSE 8bm (2026 Edition)
 SCHUELER_INFO = {
     "Leon": {"emoji": "⚡"},
     "Arian": {"emoji": "🔥"},
@@ -37,14 +34,11 @@ SCHUELER_INFO = {
     "Lenny": {"emoji": "🚀"}
 }
 
-# PASSWORT & SETTINGS
 GEHEIMES_PW = "prechtl"
 ALARM_MINUTEN = 15
 
-# Wer ist weg?
 wer_ist_weg = list(st.session_state.auf_klo.keys())[0] if st.session_state.auf_klo else None
-
-# Alarm-Logik
+ 
 ist_alarm = False
 sekunden_weg = 0
 if wer_ist_weg:
@@ -52,10 +46,8 @@ if wer_ist_weg:
     if sekunden_weg >= ALARM_MINUTEN * 60:
         ist_alarm = True
 
-# Hintergrundfarbe
 bg_color = "#FF0000" if ist_alarm else ("#8A2BE2" if wer_ist_weg else "#1e1233")
 
-# --- STYLE ---
 st.markdown(f"""
     <style>
     .stApp {{ background-color: {bg_color}; transition: background 0.5s ease; color: white; }}
@@ -75,7 +67,6 @@ st.markdown(f"""
 
 st.markdown('<div class="ultra-title">🚀 FRAU PRECHTLS KRASSES TERMINAL 🚀</div>', unsafe_allow_html=True)
 
-# --- DASHBOARD ---
 c1, c2, c3 = st.columns(3)
 with c1: st.metric("👥 IM RAUM", f"{len(SCHUELER_INFO) - (1 if wer_ist_weg else 0)}")
 with c2: st.metric("🚽 STATUS", "BESETZT 🛑" if wer_ist_weg else "FREI ✅")
@@ -87,7 +78,6 @@ if wer_ist_weg:
 
 st.write("---")
 
-# --- GRID ---
 cols = st.columns(3)
 namen_sortiert = sorted(SCHUELER_INFO.keys())
 for i, name in enumerate(namen_sortiert):
@@ -108,7 +98,6 @@ for i, name in enumerate(namen_sortiert):
                 db["df"] = pd.concat([db["df"], neue_daten], ignore_index=True)
                 st.rerun()
 
-# --- ADMIN TERMINAL ---
 st.write("---")
 with st.expander("🛠️ ADMIN TERMINAL"):
     pw_input = st.text_input("Identity Verification", type="password", placeholder="Access Code eingeben...")
@@ -130,3 +119,4 @@ st.markdown('<div class="copyright">© 2026 bolyzockt - Frau Prechtls krasses Te
 if wer_ist_weg:
     time.sleep(2)
     st.rerun()
+
